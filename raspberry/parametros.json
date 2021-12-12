@@ -1,0 +1,32 @@
+{
+    "server": {
+        "port": 1236,
+        "host": "192.168.0.30",
+        "largo_largo_msg": 4 
+    },
+
+    "camera": {
+        "src": 0,
+        "resolution": [640, 480],
+        "fps": 120,
+        "umbral": 240
+    },
+
+    "controlador": {
+        "max_u": 254
+    },
+
+    "perturbador": {
+        "ruta": "/dev/ttyACM0",
+        "baudrate": 115200,
+        "timeout": 1,
+        "encoding": "utf-8"
+    },
+
+    "motores": {
+        "ruta": "/dev/ttyS0",
+        "baudrate": 115200,
+        "timeout": 0.1,
+        "encoding": "utf-8"
+    }
+}
