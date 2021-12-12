@@ -1,0 +1,12 @@
+kda=2.0
+kdb=0.0
+kia=0.0
+kib=0.0
+kpa=0.05
+kpb=0.5
+length_i_a=0.0
+length_i_b=0.0
+max_i_a=5.0
+max_i_b=0.0
+reset_i_a=0.1
+reset_i_b=0.0
