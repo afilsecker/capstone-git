@@ -90,7 +90,7 @@ void setup() {
     pinMode(PIN_SWITCH_B, INPUT);
     pinMode(13, OUTPUT);
     digitalWrite(13, LOW);
-    Serial1.begin(9600);
+    Serial1.begin(115200);
     sei();
     reset();
 }

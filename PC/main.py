@@ -67,9 +67,9 @@ if __name__ == '__main__':
     logica.senal_actualizar_control.connect(interfaz.actualizar_control)
     logica.senal_actualizar_archivos.connect(interfaz.actualizar_archivos)
     logica.senal_actualizar_text_controlador.connect(interfaz.actualizar_text_controlador)
-    logica.senal_actualizar_limites_graficos.connect(interfaz.actualizar_limites_graficos)
     logica.senal_pedir_grafs_keys.connect(interfaz.enviar_grafs_keys)
     logica.senal_cambio_estado.connect(interfaz.cambio_estado)
+    logica.senal_graficar.connect(interfaz.graficar)
 
     # De interfaz a logica
     interfaz.senal_prueba_procesamiento.connect(logica.pedir_prueba_procesamiento)
@@ -81,6 +81,7 @@ if __name__ == '__main__':
     interfaz.senal_set_actualizacion_datos.connect(logica.set_actualizacion_datos)
     interfaz.senal_set_controlar_activado.connect(logica.set_controlar_activado)
     interfaz.senal_set_sleep.connect(logica.enviar_sleep)
+    interfaz.senal_cambio_referencia.connect(logica.cambio_referencia)
 
     # inicio de la aplicacion
     sys.exit(app.exec_())

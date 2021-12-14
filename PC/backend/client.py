@@ -81,7 +81,7 @@ class Client(QObject):
                 if len(largo_bytes) != largo_largo:
                     faltante = self.socket_client.recv(largo_largo - len(largo_bytes))
                     largo_bytes = largo_bytes + faltante
-                    
+
                 largo = pickle.loads(largo_bytes)
                 response = bytearray()
                 while len(response) < largo:

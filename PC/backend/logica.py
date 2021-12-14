@@ -23,8 +23,8 @@ class Logica(QObject):
     senal_actualizar_control = pyqtSignal(dict)
     senal_actualizar_archivos = pyqtSignal(list)
     senal_actualizar_text_controlador = pyqtSignal(dict)
-    senal_actualizar_limites_graficos = pyqtSignal(dict)
     senal_pedir_grafs_keys = pyqtSignal()
+    senal_graficar = pyqtSignal(dict)
 
     senal_cambio_estado = pyqtSignal(str)
 
@@ -40,6 +40,7 @@ class Logica(QObject):
         self.estado = 'calibracion_requerida'
         self.parametros = dict()
         self.limites_graficos = dict()
+        self.lista_datos = list()
         self.generar_diccionario_acciones()
 
     # Para acciones que vienen del cliente
@@ -71,6 +72,7 @@ class Logica(QObject):
             'perturbador': self.recibir_perturbador,
             'prueba_procesamiento_response': self.recibir_prueba_procesamiento,
             'control': self.recibir_control,
+            'datos_done': self.graficar,
             'calibrate_complete': self.calibrate_complete,
             'hard_reseted': self.hard_reseted
         }
@@ -83,7 +85,6 @@ class Logica(QObject):
         value["name"] = 'inicial'
         self.senal_actualizar_text_controlador.emit(value)
         self.senal_pedir_grafs_keys.emit()
-        self.actualizar_limites_graficos()
         self.escribir_parametros('inicial', self.parametros)
         self.obtener_paths_parametros()
 
@@ -107,8 +108,7 @@ class Logica(QObject):
             plt.show()
 
     def recibir_control(self, datos):
-        if self.aceptando_datos:
-            self.senal_actualizar_control.emit(datos)
+        self.lista_datos.append(datos)
 
     def calibrate_complete(self):
         self.estado = 'base'
@@ -148,18 +148,18 @@ class Logica(QObject):
         if state:
             self.estado = 'controlando'
         else:
-            self.estado = 'base'
-            value = ['set_vels', {'vel_A': 0, 'vel_B': 0}]
-            envio = ['send_to_motores', {'value': value}]
-
+            self.estado = 'esperando_datos'
         self.senal_cambio_estado.emit(self.estado)
         time.sleep(0.05)
-        self.senal_send_list.emit(envio)
 
+        if not state:
+            value = ['set_vels', {'vel_A': 0, 'vel_B': 0}]
+            envio = ['send_to_motores', {'value': value}]
+            self.senal_send_list.emit(envio)
+        
     def actualizar_controlador(self, parametros: dict):
         for key in parametros:
             self.parametros[key] = float(parametros[key])
-        self.actualizar_limites_graficos()
         value = ['nuevos_parametros', {'parametros': self.parametros}]
         envio = ['send_to_controlador', {'value': value}]
         self.senal_send_list.emit(envio)
@@ -171,8 +171,6 @@ class Logica(QObject):
         value = ['send_calibrate', None]
         envio = ['send_to_motores', {'value': value}]
         self.senal_send_list.emit(envio)
-
-        self.calibrate_complete()  # Hay que sacar esta linea despues
 
     def enviar_centrar(self):
         value = ['send_center', None]
@@ -194,6 +192,12 @@ class Logica(QObject):
         self.senal_cambio_estado.emit(self.estado)
         value = ['send_sleep', None]
         envio = ['send_to_motores', {'value': value}]
+        self.senal_send_list.emit(envio)
+
+    def cambio_referencia(self, referencia):
+        self.ref = referencia
+        value = ['cambio_referencia', {'ref': referencia}]
+        envio = ['send_to_controlador', {'value': value}]
         self.senal_send_list.emit(envio)
 
     # Acciones de interfaz
@@ -218,36 +222,35 @@ class Logica(QObject):
         files = [f for f in listdir(path) if isfile(join(path, f))]
         self.senal_actualizar_archivos.emit(files)
 
-    def actualizar_limites_graficos(self):
+    def graficar(self):
+        self.estado = 'base'
+        self.senal_cambio_estado.emit(self.estado)
+        diccionario_datos = dict()
+        for dato in self.lista_datos:
+            for key in dato.keys():
+                if key not in diccionario_datos.keys():
+                    diccionario_datos[key] = list()
+
+                diccionario_datos[key].append(dato[key])
+
+        for key in diccionario_datos.keys():
+            diccionario_datos[key] = np.array(diccionario_datos[key])
+
+        datos_graficos = dict()
+
         for key in self.graficos_keys:
-            if key == 'e_abs':
-                limite = np.sqrt(self.resolution[0] ** 2 + self.resolution[1] ** 2)
-                self.limites_graficos[key] = [0, limite]
-            else:
-                if key == 'e_a':
-                    limite = self.resolution[1]
-                elif key == 'e_b':
-                    limite = self.resolution[1]
-                elif key == 'u_a':
-                    limite = 254
-                elif key == 'u_b':
-                    limite = 254
-                elif key == 'p_a':
-                    limite = self.resolution[1] * self.parametros['kpa']
-                elif key == 'p_b':
-                    limite = self.resolution[0] * self.parametros['kpb']
-                elif key == 'd_a':
-                    limite = self.resolution[1] / 10 * self.parametros['kda']
-                elif key == 'd_b':
-                    limite = self.resolution[0] / 10 * self.parametros['kdb']
-                elif key == 'i_a':
-                    limite = self.parametros['max_i_a']
-                elif key == 'i_b':
-                    limite = self.parametros['max_i_b']
+            datos_graficos[key] = dict()
+            try:
+                self.limites_graficos[key] = [np.min(diccionario_datos[key]), np.max(diccionario_datos[key])]
+            except TypeError:
+                self.limites_graficos[key] = [-20, 20]
 
-                if limite == 0:
-                    limite = 1
+            if self.limites_graficos[key][0] == self.limites_graficos[key][1]:
+                self.limites_graficos[key][0] -= 1
+                self.limites_graficos[key][1] += 1
+            datos_graficos[key]['limits'] = self.limites_graficos[key]
+            datos_graficos[key]['y_data'] = diccionario_datos[key]
+            datos_graficos[key]['x_data'] = diccionario_datos['time']
 
-                self.limites_graficos[key] = [-limite, limite]
-
-        self.senal_actualizar_limites_graficos.emit(self.limites_graficos)
+        self.senal_graficar.emit(datos_graficos)
+        self.lista_datos = list()
