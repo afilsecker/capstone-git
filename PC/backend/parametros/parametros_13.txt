@@ -1,8 +1,8 @@
 kda=0.1
-kdb=0.5
+kdb=0.1
 kia=0.0
 kib=0.0
-kpa=0.4
+kpa=0.35
 kpb=0.3
 length_i_a=5.0
 length_i_b=5.0

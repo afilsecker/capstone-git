@@ -50,7 +50,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-551</y>
+            <y>0</y>
             <width>923</width>
             <height>1248</height>
            </rect>
@@ -584,6 +584,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="check_graficos">
+            <property name="text">
+             <string>Graficos</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="check_controlar">
             <property name="text">
              <string>Controlar</string>
@@ -618,19 +625,17 @@
           <item row="3" column="1">
            <widget class="QSpinBox" name="spin_ref_x"/>
           </item>
-          <item row="3" column="3">
-           <widget class="QSpinBox" name="spin_ref_y"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
+          <item row="2" column="0" colspan="2">
+           <widget class="QPushButton" name="boton_prueba_13">
             <property name="text">
-             <string>Ref x</string>
+             <string>Prueba 13%</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QPushButton" name="boton_prueba_6Hz">
+            <property name="text">
+             <string>6Hz</string>
             </property>
            </widget>
           </item>
@@ -647,24 +652,19 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="0" colspan="2">
-           <widget class="QPushButton" name="boton_prueba_13">
-            <property name="text">
-             <string>Prueba 13%</string>
-            </property>
-           </widget>
+          <item row="3" column="3">
+           <widget class="QSpinBox" name="spin_ref_y"/>
           </item>
-          <item row="1" column="0" colspan="2">
-           <widget class="QPushButton" name="boton_prueba_6Hz">
-            <property name="text">
-             <string>6Hz</string>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
             </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QPushButton" name="boton_prueba_procesamiento">
             <property name="text">
-             <string>Procesamiento</string>
+             <string>Ref x</string>
             </property>
            </widget>
           </item>
@@ -672,6 +672,13 @@
            <widget class="QPushButton" name="boton_calibrar">
             <property name="text">
              <string>Calibrar</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QPushButton" name="boton_prueba_procesamiento">
+            <property name="text">
+             <string>Procesamiento</string>
             </property>
            </widget>
           </item>
@@ -686,6 +693,13 @@
            <widget class="QPushButton" name="boton_random">
             <property name="text">
              <string>Random Vel</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="4">
+           <widget class="QPushButton" name="boton_detener">
+            <property name="text">
+             <string>Detener Prueba</string>
             </property>
            </widget>
           </item>
@@ -707,16 +721,6 @@
           <enum>QFrame::Plain</enum>
          </property>
          <layout class="QGridLayout" name="gridLayout_4">
-          <item row="3" column="3">
-           <widget class="QLabel" name="label_ki_b">
-            <property name="text">
-             <string>ki  B</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
           <item row="5" column="1">
            <widget class="QLineEdit" name="edit_reset_i_a"/>
           </item>
@@ -727,21 +731,7 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="3">
-           <widget class="QLabel" name="label_reset_i_b">
-            <property name="text">
-             <string>reset i B</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0" colspan="5">
-           <widget class="QPushButton" name="bttn_actualizar_controlador">
-            <property name="text">
-             <string>Actualizar</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="3">
+          <item row="2" column="2">
            <widget class="QLabel" name="label_kd_b">
             <property name="text">
              <string>kd B</string>
@@ -751,43 +741,43 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="4">
-           <widget class="QLineEdit" name="edit_reset_i_b"/>
+          <item row="5" column="2">
+           <widget class="QLabel" name="label_reset_i_b">
+            <property name="text">
+             <string>reset i B</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2">
+           <widget class="QLabel" name="label_ki_b">
+            <property name="text">
+             <string>ki  B</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
           </item>
           <item row="6" column="1">
            <widget class="QLineEdit" name="edit_length_i_a"/>
           </item>
-          <item row="1" column="4">
-           <widget class="QLineEdit" name="edit_kpb"/>
-          </item>
-          <item row="6" column="3">
+          <item row="6" column="2">
            <widget class="QLabel" name="label_length_i_b">
             <property name="text">
              <string>length i B</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="4">
+          <item row="5" column="3">
+           <widget class="QLineEdit" name="edit_reset_i_b"/>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="edit_kpb"/>
+          </item>
+          <item row="6" column="3">
            <widget class="QLineEdit" name="edit_length_i_b"/>
           </item>
-          <item row="8" column="0" colspan="2">
-           <widget class="QPushButton" name="bttn_save">
-            <property name="text">
-             <string>Guardar</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="0" colspan="2">
-           <widget class="QPushButton" name="bttn_load">
-            <property name="text">
-             <string>Cargar</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="3" colspan="2">
-           <widget class="QComboBox" name="combo_box_loads"/>
-          </item>
-          <item row="0" column="0" colspan="5">
+          <item row="0" column="0" colspan="4">
            <widget class="QLabel" name="label_controlador">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -808,30 +798,10 @@
             </property>
            </widget>
           </item>
-          <item row="8" column="3" colspan="2">
-           <widget class="QLineEdit" name="edit_save"/>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_length_i_a">
-            <property name="text">
-             <string>length i A</string>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
            <widget class="QLineEdit" name="edit_kpa">
             <property name="contextMenuPolicy">
              <enum>Qt::NoContextMenu</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_kp_a">
-            <property name="text">
-             <string>kp A</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -845,10 +815,27 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="3">
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_length_i_a">
+            <property name="text">
+             <string>length i A</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
            <widget class="QLabel" name="label_kp_b">
             <property name="text">
              <string>kp B</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_kp_a">
+            <property name="text">
+             <string>kp A</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -865,31 +852,6 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="edit_kia"/>
-          </item>
-          <item row="3" column="4">
-           <widget class="QLineEdit" name="edit_kib"/>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="edit_kda"/>
-          </item>
-          <item row="4" column="3">
-           <widget class="QLabel" name="label_max_i_b">
-            <property name="text">
-             <string>max i B</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="4">
-           <widget class="QLineEdit" name="edit_kdb"/>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLineEdit" name="edit_max_i_a"/>
-          </item>
           <item row="4" column="0">
            <widget class="QLabel" name="label_max_i_a">
             <property name="text">
@@ -900,8 +862,47 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="4">
+          <item row="4" column="3">
            <widget class="QLineEdit" name="edit_max_i_b"/>
+          </item>
+          <item row="3" column="3">
+           <widget class="QLineEdit" name="edit_kib"/>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="edit_kda"/>
+          </item>
+          <item row="4" column="2">
+           <widget class="QLabel" name="label_max_i_b">
+            <property name="text">
+             <string>max i B</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3">
+           <widget class="QLineEdit" name="edit_kdb"/>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="edit_kia"/>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="edit_max_i_a"/>
+          </item>
+          <item row="7" column="0" colspan="2">
+           <widget class="QPushButton" name="boton_save_13">
+            <property name="text">
+             <string>save to prueba_13</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="2" colspan="2">
+           <widget class="QPushButton" name="boton_save_6">
+            <property name="text">
+             <string>save to 6hz</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -918,12 +919,52 @@
           <enum>QFrame::Box</enum>
          </property>
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
+          <item row="0" column="2">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>G</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="prueba_G"/>
+          </item>
+          <item row="2" column="0" colspan="4">
            <widget class="QPushButton" name="bttn_serial">
             <property name="text">
              <string>Ventana Serial</string>
             </property>
            </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="prueba_F"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>F</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>A</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="prueba_A"/>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>B</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="prueba_B"/>
           </item>
          </layout>
         </widget>

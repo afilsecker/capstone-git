@@ -25,6 +25,8 @@ class Logica(QObject):
     senal_actualizar_text_controlador = pyqtSignal(dict)
     senal_pedir_grafs_keys = pyqtSignal()
     senal_graficar = pyqtSignal(dict)
+    senal_cambio_ref = pyqtSignal(list)
+    senal_actualizar_controlador = pyqtSignal(dict)
 
     senal_cambio_estado = pyqtSignal(str)
 
@@ -41,6 +43,7 @@ class Logica(QObject):
         self.parametros = dict()
         self.limites_graficos = dict()
         self.lista_datos = list()
+        self.graficar_activado = False
         self.generar_diccionario_acciones()
 
     # Para acciones que vienen del cliente
@@ -74,7 +77,9 @@ class Logica(QObject):
             'control': self.recibir_control,
             'datos_done': self.graficar,
             'calibrate_complete': self.calibrate_complete,
-            'hard_reseted': self.hard_reseted
+            'hard_reseted': self.hard_reseted,
+            'prueba_13_listo': self.prueba_13_listo,
+            'new_ref': self.new_ref
         }
 
     def acquire_initial_data(self, **datos):
@@ -118,6 +123,10 @@ class Logica(QObject):
         self.estado = 'calibracion_requerida'
         self.senal_cambio_estado.emit(self.estado)
 
+    def new_ref(self, ref):
+        self.ref = ref
+        self.senal_cambio_ref.emit(ref)
+
     # Acciones hacia perturbador
     def enviar_perturbador(self, msg):
         value = ['send', {'msg': msg}]
@@ -158,9 +167,23 @@ class Logica(QObject):
             self.senal_send_list.emit(envio)
         
     def actualizar_controlador(self, parametros: dict):
-        for key in parametros:
-            self.parametros[key] = float(parametros[key])
-        value = ['nuevos_parametros', {'parametros': self.parametros}]
+        try:
+            for key in parametros:
+                self.parametros[key] = float(parametros[key])
+            value = ['nuevos_parametros', {'parametros': self.parametros}]
+            envio = ['send_to_controlador', {'value': value}]
+            self.senal_send_list.emit(envio)
+
+        except  ValueError:
+            pass
+
+    def enviar_prueba_13(self):
+        value = ['prueba_13', None]
+        envio = ['send_to_controlador', {'value': value}]
+        self.senal_send_list.emit(envio)
+
+    def detener_prueba(self):
+        value = ['detener', None]
         envio = ['send_to_controlador', {'value': value}]
         self.senal_send_list.emit(envio)
 
@@ -200,9 +223,48 @@ class Logica(QObject):
         envio = ['send_to_controlador', {'value': value}]
         self.senal_send_list.emit(envio)
 
+    def prueba_13(self):
+        self.estado = 'prueba_13'
+        self.senal_cambio_estado.emit(self.estado)
+        parametros = dict()
+        with open('backend/parametros/parametros_13.txt', 'r') as f:
+            for line in f.readlines():
+                splited = line.split('=')
+                parametros[splited[0]] = float(splited[1][:-1])
+        self.actualizar_controlador(parametros)
+        self.senal_actualizar_controlador.emit(parametros)
+        self.enviar_prueba_13()
+
+    def prueba_6(self, datos: dict):
+        self.enviar_centrar()
+        for key in datos.keys():
+            if len(datos[key]) == 0:
+                valor = 0
+            else:
+                valor = datos[key]
+            msg = f'{key}{valor}'
+            self.enviar_perturbador(msg)
+        parametros = dict()
+        with open('backend/parametros/parametros_6.txt', 'r') as f:
+            for line in f.readlines():
+                splited = line.split('=')
+                parametros[splited[0]] = float(splited[1][:-1])
+        self.actualizar_controlador(parametros)
+        self.senal_actualizar_controlador.emit(parametros)
+
+    def prueba_13_listo(self):
+        self.estado = 'base'
+        self.senal_cambio_estado.emit(self.estado)
+
     # Acciones de interfaz
     def obtener_graficos_keys(self, keys: list):
         self.graficos_keys = keys
+
+    def set_graficar(self, state):
+        self.graficar_activado = state
+        value = ['set_graficar', {'state': state}]
+        envio = ['send_to_controlador', {'value': value}]
+        self.senal_send_list.emit(envio)
 
     # Acciones hacia interfaz
     def iniciar_interfaz(self):
@@ -225,32 +287,50 @@ class Logica(QObject):
     def graficar(self):
         self.estado = 'base'
         self.senal_cambio_estado.emit(self.estado)
-        diccionario_datos = dict()
-        for dato in self.lista_datos:
-            for key in dato.keys():
-                if key not in diccionario_datos.keys():
-                    diccionario_datos[key] = list()
+        corte = 1
+        if self.graficar_activado:
+            diccionario_datos = dict()
+            for dato in self.lista_datos:
+                for key in dato.keys():
+                    if key not in diccionario_datos.keys():
+                        diccionario_datos[key] = list()
 
-                diccionario_datos[key].append(dato[key])
+                    diccionario_datos[key].append(dato[key])
 
-        for key in diccionario_datos.keys():
-            diccionario_datos[key] = np.array(diccionario_datos[key])
+            for key in diccionario_datos.keys():
+                try:
+                    if key == 'e_abs':
+                        for i in range(len(diccionario_datos[key])):
+                            e_abs = diccionario_datos[key][i]
+                            if abs(e_abs - diccionario_datos[key][0]) > 2:
+                                corte = i
+                                break
+                        if not corte:
+                            corte = 1
+                except TypeError:
+                    corte = 1
 
-        datos_graficos = dict()
+            for i in range(len(diccionario_datos['time'])):
+                diccionario_datos['time'][i] -= diccionario_datos['time'][corte - 1]
 
-        for key in self.graficos_keys:
-            datos_graficos[key] = dict()
-            try:
-                self.limites_graficos[key] = [np.min(diccionario_datos[key]), np.max(diccionario_datos[key])]
-            except TypeError:
-                self.limites_graficos[key] = [-20, 20]
+            for key in diccionario_datos.keys():
+                diccionario_datos[key] = np.array(diccionario_datos[key][corte - 1:])
 
-            if self.limites_graficos[key][0] == self.limites_graficos[key][1]:
-                self.limites_graficos[key][0] -= 1
-                self.limites_graficos[key][1] += 1
-            datos_graficos[key]['limits'] = self.limites_graficos[key]
-            datos_graficos[key]['y_data'] = diccionario_datos[key]
-            datos_graficos[key]['x_data'] = diccionario_datos['time']
+            datos_graficos = dict()
 
-        self.senal_graficar.emit(datos_graficos)
-        self.lista_datos = list()
+            for key in self.graficos_keys:
+                datos_graficos[key] = dict()
+                try:
+                    self.limites_graficos[key] = [np.min(diccionario_datos[key]), np.max(diccionario_datos[key])]
+                except TypeError:
+                    self.limites_graficos[key] = [-200, 200]
+
+                if self.limites_graficos[key][0] == self.limites_graficos[key][1]:
+                    self.limites_graficos[key][0] -= 1
+                    self.limites_graficos[key][1] += 1
+                datos_graficos[key]['limits'] = self.limites_graficos[key]
+                datos_graficos[key]['y_data'] = diccionario_datos[key]
+                datos_graficos[key]['x_data'] = diccionario_datos['time']
+
+            self.senal_graficar.emit(datos_graficos)
+            self.lista_datos = list()

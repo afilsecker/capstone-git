@@ -20,11 +20,16 @@ class Interfaz(QMainWindow):
     senal_calibrar = pyqtSignal()
     senal_centrar = pyqtSignal()
     senal_random = pyqtSignal()
+    senal_prueba_13 = pyqtSignal()
+    senal_prueba_6 = pyqtSignal(dict)
+    senal_detener = pyqtSignal()
     senal_cambio_referencia = pyqtSignal(list)
-    
+    senal_save = pyqtSignal(str, dict)
+
     senal_set_actualizacion_datos = pyqtSignal(bool)
     senal_set_controlar_activado = pyqtSignal(bool)
     senal_set_sleep = pyqtSignal(bool)
+    senal_set_graficos = pyqtSignal(bool)
 
     def __init__(self):
         super(Interfaz, self).__init__()
@@ -40,7 +45,6 @@ class Interfaz(QMainWindow):
 
         self.begin_grafs = False
 
-        self.set_text_edit()
         self.set_perturbador()
         self.set_botones()
         self.set_checkboxes()
@@ -50,24 +54,29 @@ class Interfaz(QMainWindow):
     # set's de init
     def set_text_edit(self):
         for edit in [self.ui.__dict__[f'edit_{key}'] for key in self.keys_parametros]:
-            edit.returnPressed.connect(self.boton_actualizar_controlador)
+            edit.textChanged.connect(self.boton_actualizar_controlador)
 
     def set_perturbador(self):
         self.ui.bttn_serial.clicked.connect(self.senal_abrir_serial.emit)
 
     def set_botones(self):
         self.ui.boton_prueba_procesamiento.clicked.connect(self.senal_prueba_procesamiento.emit)
-        self.ui.bttn_actualizar_controlador.clicked.connect(self.boton_actualizar_controlador)
         self.ui.boton_calibrar.clicked.connect(self.senal_calibrar.emit)
         self.ui.boton_centrar.clicked.connect(self.senal_centrar.emit)
         self.ui.boton_random.clicked.connect(self.senal_random.emit)
+        self.ui.boton_prueba_13.clicked.connect(self.senal_prueba_13)
+        self.ui.boton_save_13.clicked.connect(self.save_13)
+        self.ui.boton_save_6.clicked.connect(self.save_6)
+        self.ui.boton_detener.clicked.connect(self.senal_detener.emit)
+        self.ui.boton_prueba_6Hz.clicked.connect(self.prueba_6)
         self.lista_botones_acciones = ['calibrar', 'centrar', 'prueba_13', 'prueba_6Hz',
-                                       'prueba_x', 'prueba_y', 'random', 'prueba_procesamiento']
+                                       'prueba_x', 'prueba_y', 'random', 'prueba_procesamiento', 'detener']
 
     def set_checkboxes(self):
         self.ui.check_controlar.stateChanged.connect(self.check_controlar_apretado)
         self.ui.check_sleep.stateChanged.connect(self.check_sleep_apretado)
-        self.lista_check_boxes = ['datos', 'controlar', 'sleep']
+        self.ui.check_graficos.stateChanged.connect(self.check_graficos_apretado)
+        self.lista_check_boxes = ['graficos', 'controlar', 'sleep']
 
     def set_spinboxes(self):
         self.ui.spin_ref_x.valueChanged.connect(self.referencia_cambiada)
@@ -117,10 +126,22 @@ class Interfaz(QMainWindow):
         val = self.ui.check_sleep.checkState()
         self.senal_set_sleep.emit(val > 0)
 
+    def check_graficos_apretado(self):
+        print("holas")
+        val = self.ui.check_graficos.checkState()
+        self.senal_set_graficos.emit(val > 0)
+
     def referencia_cambiada(self):
         ref_x = self.ui.spin_ref_x.value()
         ref_y = self.ui.spin_ref_y.value()
         self.senal_cambio_referencia.emit([ref_x, ref_y])
+
+    def prueba_6(self):
+        datos = dict()
+        for key in self.ui.__dict__.keys():
+            if key[:6] == 'prueba':
+                datos[key[-1]] = self.ui.__dict__[key].text()
+        self.senal_prueba_6.emit(datos)
 
     # Acciones por backend triviales
     def inicializar(self, datos: dict):
@@ -130,6 +151,7 @@ class Interfaz(QMainWindow):
         self.ui.spin_ref_y.setMaximum(datos['resolucion'][1])
         self.ui.spin_ref_x.setValue(datos['resolucion'][0] / 2)
         self.ui.spin_ref_y.setValue(datos['resolucion'][1] / 2)
+        self.set_text_edit()
         self.show()
 
     def enviar_grafs_keys(self):
@@ -150,21 +172,26 @@ class Interfaz(QMainWindow):
             self.ui.check_sleep.setChecked(False)
         elif estado == 'base':
             texto = 'Listo'
-            botones_activados = ['prueba_procesamiento','calibrar', 'centrar', 'random']
+            botones_activados = ['prueba_procesamiento','calibrar', 'centrar', 'random', 'prueba_13', 'prueba_6Hz']
             checks_activados = self.lista_check_boxes
         elif estado == 'controlando':
             texto = 'Controlando'
-            botones_activados = ['prueba_6Hz', 'prueba_13', 'prueba_x', 'prueba_y']
-            checks_activados = self.lista_check_boxes
+            botones_activados = []
+            checks_activados = ['controlar', 'graficos']
         elif estado == 'sleep':
             texto = 'Sleep'
             botones_activados = ['prueba_procesamiento', 'calibrar']
-            checks_activados = ['datos']
+            checks_activados = ['graficos']
             self.ui.check_controlar.setChecked(False)
         elif estado == 'esperando_datos':
             texto = 'esperando graficos...'
             botones_activados = []
             checks_activados = []
+        elif estado == 'prueba_13':
+            texto = 'Prueba_13'
+            botones_activados = ['detener']
+            checks_activados = ['graficos']
+            self.ui.check_graficos.setChecked(True)
 
         else:
             raise ValueError
@@ -183,11 +210,9 @@ class Interfaz(QMainWindow):
             if key in self.ui.__dict__.keys():
                 self.ui.__dict__[key].setEnabled(check in checks_activados)
 
-    # Acciones por backend para la gui del controlador
-    def actualizar_archivos(self, files):
-        self.ui.combo_box_loads.clear()
-        for file in files:
-            self.ui.combo_box_loads.addItem(file[:-4])
+    def actualizar_ref(self, ref):
+        self.ui.spin_ref_x.setValue(ref[0])
+        self.ui.spin_ref_y.setValue(ref[1])
 
     # Acciones por backend para los graficos y weas
     def graficar(self, datos: dict):
@@ -212,7 +237,6 @@ class Interfaz(QMainWindow):
                 else:
                     self.ui.__dict__[f'val_{key}'].setText(' ')
 
-
         self.ui.label_fps.setText(f'FPS: {self.contar_fps(datos["fps"]):.2f}')
 
     def contar_fps(self, fps):
@@ -220,6 +244,19 @@ class Interfaz(QMainWindow):
         if len(self.fps_list) > 100:
             self.fps_list.pop(0)
         return np.mean(np.array(self.fps_list))
+
+    def actualizar_controlador(self, parametros: dict):
+        print(parametros)
+        for key in parametros.keys():
+            llave = f'edit_{key}'
+            if llave in self.ui.__dict__:
+                self.ui.__dict__[llave].setText(str(parametros[key]))
+
+    def save_13(self):
+        self.senal_save.emit('parametros_13', self.parametros)
+
+    def save_6(self):
+        self.senal_save.emit('parametros_6', self.parametros)
 
 
 class Grafico(FigureCanvas):
