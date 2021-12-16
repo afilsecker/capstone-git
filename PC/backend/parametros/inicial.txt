@@ -1,9 +1,9 @@
 kda=0.1
-kdb=0.5
+kdb=0.0
 kia=0.0
 kib=0.0
-kpa=0.4
-kpb=0.3
+kpa=0.9
+kpb=0.6
 length_i_a=5.0
 length_i_b=5.0
 max_i_a=20.0

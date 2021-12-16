@@ -3,7 +3,7 @@
     {
         "cliente": {
             "port": 1236,
-            "host": "192.168.0.30",
+            "host": "172.20.10.2",
             "intentos_conexion": 10,
             "largo_largo_msg": 4
         }
