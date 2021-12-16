@@ -17,6 +17,7 @@ class Capstone:
         server_pipe, self.server_pipe = Pipe()
         perturbador_pipe, self.perturbador_pipe = Pipe()
         motores_pipe, self.motores_pipe = Pipe()
+        from_controlador_pipe, to_motores_pipe = Pipe()
         self.lock_send = Lock()
         self.generar_diccionario_acciones()
         Thread(target=self.handle, daemon=False, name="handler controlador",
@@ -24,12 +25,12 @@ class Capstone:
         Thread(target=self.handle, daemon=False, name="handler server",
                args=(self.server_pipe, self.action_dict,)).start()
         Thread(target=self.handle, daemon=False, name="handler perturbador",
-               args=(self.perturbador_pipe, self.action_dict,))
+               args=(self.perturbador_pipe, self.action_dict,)).start()
         Thread(target=self.handle, daemon=True, name='handler motores',
                args=(self.motores_pipe, self.action_dict,)).start()
 
         Process(target=self.controlador_process, daemon=False,
-                args=(controlador_pipe, self.lock_send),
+                args=(controlador_pipe, self.lock_send, from_controlador_pipe),
                 name="proceso controlador").start()
         sleep(0.1)
         Process(target=self.server_process, daemon=False,
@@ -38,10 +39,10 @@ class Capstone:
         sleep(0.1)
         Process(target=self.perturbador_process, daemon=False,
                 args=(perturbador_pipe, self.lock_send),
-                name="proceso perturbador")  # Hay que inicializarlo despues
+                name="proceso perturbador").start()
         sleep(0.1)
         Process(target=self.motores_process, daemon=True,
-                args=(motores_pipe, self.lock_send),
+                args=(motores_pipe, self.lock_send, to_motores_pipe),
                 name="proceso motores").start()
 
     def generar_diccionario_acciones(self):
@@ -78,8 +79,8 @@ class Capstone:
                 else:
                     action_dict[recibido[0]]()
 
-    def controlador_process(self, controlador_pipe: Connection, lock):
-        self.controlador = Controlador(controlador_pipe, lock)
+    def controlador_process(self, controlador_pipe: Connection, lock, pipe_motores):
+        self.controlador = Controlador(controlador_pipe, lock, pipe_motores)
 
     def server_process(self, server_pipe: Connection, lock):
         self.server = Server(server_pipe, lock)
@@ -87,8 +88,8 @@ class Capstone:
     def perturbador_process(self, perturbador_pipe: Connection, lock):
         self.perturbador = Perturbador(perturbador_pipe, lock)
 
-    def motores_process(self, motores_pipe: Connection, lock):
-        self.motores = Motores(motores_pipe, lock)
+    def motores_process(self, motores_pipe: Connection, lock, pipe_controlador):
+        self.motores = Motores(motores_pipe, lock, pipe_controlador)
 
     def dummy(self):
         print("dummy function called")

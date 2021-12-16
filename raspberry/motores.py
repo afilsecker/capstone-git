@@ -10,9 +10,10 @@ import random
 
 
 class Motores:
-    def __init__(self, motores_pipe: Connection, lock):
+    def __init__(self, motores_pipe: Connection, lock, controlador_pipe: Connection):
         self.lock = lock
         self.lock_serial = Lock()
+        self.controlador_pipe = controlador_pipe
         self.motores_pipe = motores_pipe
         self.in_calibrate = False
         with open('parametros.json', 'r') as f:
@@ -23,12 +24,13 @@ class Motores:
         self.generar_diccionario_acciones()
         self.generar_diccionario_acciones_motores()
         Thread(target=self.handle_capstone, name='handle_capstone').start()
+        Thread(target=self.handle_controlador).start()
         self.start_serial()
         self.send_hard_reset()
 
     # Cosas de serial
     def start_serial(self):
-        self.serial = Serial(port=self.ruta, baudrate=9600)
+        self.serial = Serial(port=self.ruta, baudrate=115200)
         self.serial.reset_input_buffer()
         self.serial.reset_output_buffer()
         self.closed = False
@@ -50,7 +52,7 @@ class Motores:
             except KeyError:
                 print(f"Opcion {c} no válida")
 
-            sleep(0.01)
+            sleep(0.005)
 
     # Para acciones que vienen del arduino
     def generar_diccionario_acciones_motores(self):
@@ -114,6 +116,12 @@ class Motores:
     def hard_reseted(self):
         print("hard_reseted")
         self.send_server(['hard_reseted', None])
+
+    # Para acciones de controlador
+    def handle_controlador(self):
+        while True:
+            recibido = self.controlador_pipe.recv()
+            self.set_vels(**recibido[1])
 
     # Para acciones que vienen de Capstone
     def handle_capstone(self):

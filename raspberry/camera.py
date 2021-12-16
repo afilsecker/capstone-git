@@ -55,7 +55,7 @@ class Camera:
             with self.frames_lock:
                 frame = self.frames.popleft()
                 self.find_laser(frame)
-                if self.red_point[0] is not None:
+                if self.red_point[0] is not None and self.red_point[1] is not None:
                     self.punto_encontrado.set()
 
             self.listo_event.set()
@@ -84,6 +84,7 @@ class Camera:
         with self.frames_lock:
             _, frame = self.stream.read()
             punto_encontrado, puntos_encontrados = self.find_laser(frame)
+            print(punto_encontrado, puntos_encontrados)
             return frame, punto_encontrado, puntos_encontrados
 
 

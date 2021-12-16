@@ -1,4 +1,4 @@
-from time import time
+from time import time, sleep
 import json
 from multiprocessing.connection import Connection
 from camera import Camera
@@ -7,27 +7,36 @@ import numpy as np
 
 
 class Controlador():
-    def __init__(self, controlador_pipe: Connection, lock):
+    def __init__(self, controlador_pipe: Connection, lock, pipe_motores: Connection):
         with open('parametros.json', 'r') as f:
             diccionario = json.load(f)
             self.__dict__.update(diccionario['controlador'])
 
         self.lock = lock
-        self.ref = [0, 0]
+        self.pipe_motores = pipe_motores
         self.e_a_antiguos_i = list()
         self.e_b_antiguos_i = list()
+        self.e_a_antiguos_d = list()
+        self.e_b_antiguos_d = list()
+        self.lista_datos = list()
         self.e_a_anterior = 0
         self.e_b_anterior = 0
+        self.graficar = False
+        self.prueba_13_activada = False
+        self.prueba_13_listo = False
+        self.inicio_prueba_13 = False
         self.envio_datos = False
         self.controlar_activado = False
         self.controlador_pipe = controlador_pipe
         self.listo_event = Event()
         self.camera = Camera(self.listo_event)
         self.resolution = self.camera.resolution
+        self.ref = [self.resolution[0] / 2, self.resolution[1] / 2]
         self.parametros_dict = dict()
         self.obtener_parametros()
         self.contador = 0
         self.lista_fps = []
+        self.laser_fuera = False
         self.start_time = time()
         self.generar_diccionario_acciones()
         Thread(target=self.controlar, daemon=False, name='controlar').start()
@@ -53,7 +62,11 @@ class Controlador():
             'prueba_procesamiento': self.prueba_procesamiento,
             'set_actualizacion_datos': self.set_actualizacion_datos,
             'set_controlar_activado': self.set_controlar_activado,
-            'nuevos_parametros': self.actualizar_parametros
+            'nuevos_parametros': self.actualizar_parametros,
+            'cambio_referencia': self.cambio_referencia,
+            'prueba_13': self.prueba_13,
+            'detener': self.detener_prueba,
+            'set_graficar': self.set_graficar
         }
 
     def send_initial_data(self):
@@ -81,6 +94,10 @@ class Controlador():
 
     def set_controlar_activado(self, state):
         self.controlar_activado = state
+        if state:
+            self.start_time_grafs = time()
+        if not state:
+            self.envio_calculo()
 
     def actualizar_parametros(self, parametros: dict):
         self.__dict__.update(parametros)
@@ -92,14 +109,24 @@ class Controlador():
                     f.write(str(self.__dict__[parametro]))
                     f.write('\n')
 
+    def cambio_referencia(self, ref):
+        self.ref = ref
+
+    def set_graficar(self, state):
+        self.graficar = state
+
     # Para acciones hacia capstone
     def send(self, envio):
         with self.lock:
             self.controlador_pipe.send(envio)
 
-    def envio_calculo(self):
-        if self.envio_datos:
-            datos = {
+    def send_server(self, value):
+        send = ['send', {'value': value}]
+        envio = ['send_to_server', {'value': send}]
+        self.send(envio)
+
+    def almacenar_calculo(self):
+        datos = {
                 'fps': self.fps,
                 'x': self.x,
                 'y': self.y,
@@ -118,13 +145,25 @@ class Controlador():
                 'u_b': self.u_b,
                 'time': time() - self.start_time_grafs
             }
-            value = ['control', {'datos': datos}]
-            send = ['send', {'value': value}]
-            envio = ['send_to_server', {'value': send}]
-            self.send(envio)
+        self.lista_datos.append(datos)
+
+    def envio_calculo(self):
+        if self.graficar:
+            for dato in self.lista_datos:
+                value = ['control', {'datos': dato}]
+                self.send_server(value)
+        value = ['datos_done', None]
+        self.send_server(value)
+        self.lista_datos = list()
 
     def set_vels(self):
-        value = ['set_vels', {'vel_A': self.u_a, 'vel_B': self.u_b}]
+        if self.u_a is not None and self.u_b is not None:
+            self.send_time = time()
+            value = ['set_vels', {'vel_A': self.u_a, 'vel_B': self.u_b}]
+            self.pipe_motores.send(value)
+
+    def send_center(self):
+        value = ['send_center', None]
         envio = ['send_to_motores', {'value': value}]
         self.send(envio)
 
@@ -139,6 +178,7 @@ class Controlador():
     def controlar(self):
         while True:
             self.listo_event.wait()
+            self.capture_time = time()
             self.listo_event.clear()
             self.contador += 1
             self.fps = 1 / (time() - self.start_time)
@@ -147,31 +187,55 @@ class Controlador():
                 # print(f"fps: {np.mean(np.array(self.lista_fps)):.2f}")
                 self.contador = 0
                 self.lista_fps = []
+
+            if self.inicio_prueba_13:
+                sleep(0.1)
             self.calcular()
             self.start_time = time()
-            self.envio_calculo()
             if self.controlar_activado:
+                self.almacenar_calculo()
                 self.set_vels()
 
+            if self.prueba_13_activada:
+                self.almacenar_calculo()
+                self.tiempo = time()
+                self.set_vels()
+                if self.prueba_13_listo:
+                    self.prueba_13_activada = False
+                    self.prueba_13_listo = False
+                    self.u_a = 0
+                    self.u_b = 0
+                    self.set_vels()
+                    value = ['prueba_13_listo', None]
+                    self.send_server(value)
+                    self.envio_calculo()
+
+            if self.laser_fuera:
+                self.send_center()
+                self.laser_fuera = False
+
     def calcular(self):
-        self.ref_camera_x = self.ref[0] + self.resolution[0]
-        self.ref_camera_y = self.ref[1] + self.resolution[1]
-        if self.camera.red_point[0] is not None:
+        self.ref_camera_x = self.ref[0]
+        self.ref_camera_y = self.ref[1]
+        if self.camera.red_point[0] is not None and self.camera.red_point[1] is not None:
+            self.laser_fuera = False
             self.x = self.camera.red_point[1]
             self.y = self.camera.red_point[0]
             self.e_b = self.ref_camera_x - self.x
-            self.e_a = self.ref_camera_y - self.y
+            self.e_a = - self.ref_camera_y + self.y
             self.e_abs = np.sqrt(self.e_b ** 2 + self.e_a ** 2)
             self.p_a = self.e_a * self.kpa
             self.p_b = self.e_b * self.kpb
-            if self.e_b_anterior is not None:
-                self.d_b = self.kdb * (self.e_b - self.e_b_anterior)
-            else:
-                self.d_b = 0
-            if self.e_a_anterior is not None:
-                self.d_a = self.kda * (self.e_a - self.e_a_anterior)
+            if len(self.e_a_antiguos_d) > 0:
+                self.d_a = self.kda * (self.e_a -
+                                       sum(self.e_a_antiguos_d) / len(self.e_a_antiguos_d))
             else:
                 self.d_a = 0
+            if len(self.e_b_antiguos_d) > 0:
+                self.d_b = self.kdb * (self.e_b -
+                                       sum(self.e_b_antiguos_d) / len(self.e_b_antiguos_d))
+            else:
+                self.d_b = 0
             if len(self.e_a_antiguos_i) > 0:
                 self.i_a = self.kia * (sum(self.e_a_antiguos_i) + self.e_a)
             else:
@@ -190,6 +254,8 @@ class Controlador():
                 self.i_a = self.max_i_a * np.sign(self.i_a)
             if abs(self.i_b) > self.max_i_b:
                 self.i_b = self.max_i_b * np.sign(self.i_b)
+            self.d_a = - self.d_a
+            self.d_b = - self.d_b
             self.u_a = int(self.p_a + self.d_a + self.i_a)
             self.u_b = int(self.p_b + self.d_b + self.i_b)
             self.e_a_antiguos_i.append(self.e_a)
@@ -198,15 +264,39 @@ class Controlador():
             self.e_b_antiguos_i.append(self.e_b)
             if len(self.e_b_antiguos_i) > self.length_i_b:
                 self.e_b_antiguos_i.pop(0)
+            self.e_a_antiguos_d.append(self.e_a)
+            if len(self.e_a_antiguos_d) > 4:
+                self.e_a_antiguos_d.pop(0)
+            self.e_b_antiguos_d.append(self.e_b)
+            if len(self.e_b_antiguos_d) > 4:
+                self.e_b_antiguos_d.pop(0)
             self.e_b_anterior = self.e_b
             self.e_a_anterior = self.e_a
-            if abs(self.u_a) > self.max_u:
-                self.u_a = int(self.max_u * np.sign(self.u_a))
+            if abs(self.u_a) > 200:
+                self.u_a = int(200 * np.sign(self.u_a))
             if abs(self.u_b) > self.max_u:
                 self.u_b = int(self.max_u * np.sign(self.u_b))
 
+            if self.prueba_13_activada:
+                if self.e_abs < 5:
+                    self.contador_listo += 1
+                    self.u_a = 0
+                    self.u_b = 0
+                else:
+                    self.contador_listo = 0
+                if self.contador_listo == 3:
+                    self.prueba_13_listo = True
+                    self.u_a = 0
+                    self.u_b = 0
+
+                if self.inicio_prueba_13:
+                    self.start_time_grafs = time()
+                    self.inicio_prueba_13 = False
+
         else:
             self.reset_values()
+            if not self.laser_fuera:
+                self.laser_fuera = True
 
     def reset_values(self):
         self.x = None
@@ -222,10 +312,30 @@ class Controlador():
         self.i_b = None
         self.u_a = None
         self.u_b = None
-        self.e_b_anterior = None
-        self.e_a_anterior = None
+        self.e_b_antiguos_d = list()
+        self.e_a_antiguos_d = list()
         self.e_b_antiguos_i = list()
         self.e_a_antiguos_i = list()
+
+    def prueba_13(self):
+        try:
+            dir_x = self.resolution[0] / 2 - self.x
+            dir_y = self.resolution[1] / 2 - self.y
+            abs_dir = np.sqrt(dir_x ** 2 + dir_y ** 2)
+            self.ref = [int(self.x + dir_x * 104 / abs_dir), int(self.y + dir_y * 104 / abs_dir)]
+            print(dir_x, dir_y, self.x, self.y, abs_dir, self.ref)
+            value = ['new_ref', {'ref': self.ref}]
+            self.send_server(value)
+            self.reset_values()
+            self.contador_listo = 0
+            self.inicio_prueba_13 = True
+            self.prueba_13_activada = True
+            self.prueba_13_listo = False
+        except:
+            self.prueba_13_listo = True
+
+    def detener_prueba(self):
+        self.prueba_13_listo = True
 
 
 if __name__ == '__main__':
