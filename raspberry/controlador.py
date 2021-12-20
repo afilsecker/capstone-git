@@ -4,6 +4,7 @@ from multiprocessing.connection import Connection
 from camera import Camera
 from threading import Event, Thread
 import numpy as np
+from random import uniform
 
 
 class Controlador():
@@ -110,6 +111,7 @@ class Controlador():
                     f.write('\n')
 
     def cambio_referencia(self, ref):
+        print(ref)
         self.ref = ref
 
     def set_graficar(self, state):
@@ -158,8 +160,7 @@ class Controlador():
 
     def set_vels(self):
         if self.u_a is not None and self.u_b is not None:
-            self.send_time = time()
-            value = ['set_vels', {'vel_A': self.u_a, 'vel_B': self.u_b}]
+            value = ['set_vels', {'vel_A': self.u_a, 'vel_B': self.u_b, 'start_time': self.capture_time}]
             self.pipe_motores.send(value)
 
     def send_center(self):
@@ -190,37 +191,36 @@ class Controlador():
 
             if self.inicio_prueba_13:
                 sleep(0.1)
-            self.calcular()
+                self.start_time_grafs = time()
+                self.inicio_prueba_13 = False
             self.start_time = time()
+            self.x = self.camera.red_point[1]
+            self.y = self.camera.red_point[0]
             if self.controlar_activado:
+                self.calcular()
                 self.almacenar_calculo()
                 self.set_vels()
 
             if self.prueba_13_activada:
+                self.calcular_manbang()
                 self.almacenar_calculo()
                 self.tiempo = time()
                 self.set_vels()
                 if self.prueba_13_listo:
                     self.prueba_13_activada = False
                     self.prueba_13_listo = False
-                    self.u_a = 0
-                    self.u_b = 0
                     self.set_vels()
                     value = ['prueba_13_listo', None]
                     self.send_server(value)
                     self.envio_calculo()
 
-            if self.laser_fuera:
-                self.send_center()
-                self.laser_fuera = False
-
     def calcular(self):
         self.ref_camera_x = self.ref[0]
         self.ref_camera_y = self.ref[1]
-        if self.camera.red_point[0] is not None and self.camera.red_point[1] is not None:
-            self.laser_fuera = False
+        if self.x is not None and self.y is not None:
             self.x = self.camera.red_point[1]
             self.y = self.camera.red_point[0]
+            self.contador_laser_fuera = 0
             self.e_b = self.ref_camera_x - self.x
             self.e_a = - self.ref_camera_y + self.y
             self.e_abs = np.sqrt(self.e_b ** 2 + self.e_a ** 2)
@@ -295,8 +295,47 @@ class Controlador():
 
         else:
             self.reset_values()
-            if not self.laser_fuera:
-                self.laser_fuera = True
+            print("se perdio el laser")
+            self.contador_laser_fuera += 1
+            if self.contador_laser_fuera > 10:
+                self.send_center()
+
+    def calcular_manbang(self):
+        self.ref_camera_x = self.ref[0]
+        self.ref_camera_y = self.ref[1]
+        if self.x is not None and self.y is not None:
+            self.contador_laser_fuera = 0
+            self.e_b = self.ref[0] - self.x
+            self.e_a = - self.ref[1] + self.y
+            self.e_abs = np.sqrt(self.e_b ** 2 + self.e_a ** 2)
+            if abs(self.e_a) > self.reset_i_a:
+                self.u_a = int(self.max_i_a * np.sign(self.e_a))
+            else:
+                self.u_a = 0
+            if abs(self.e_b) > self.reset_i_b:
+                self.u_b = int(self.max_i_b * np.sign(self.e_b))
+            else:
+                self.u_b = 0
+
+            self.p_a = 0
+            self.p_b = 0
+            self.i_a = 0
+            self.i_b = 0
+            self.d_a = 0
+            self.d_b = 0
+
+            if abs(self.e_a) <= self.reset_i_a and abs(self.e_b) <= self.reset_i_b:
+                print("hola cabros")
+                self.prueba_13_listo = True
+                self.u_a = 0
+                self.u_b = 0
+
+        else:
+            self.reset_values()
+            print("se perdio el laser")
+            self.contador_laser_fuera += 1
+            if self.contador_laser_fuera > 10:
+                self.send_center()
 
     def reset_values(self):
         self.x = None
@@ -318,21 +357,21 @@ class Controlador():
         self.e_a_antiguos_i = list()
 
     def prueba_13(self):
-        try:
-            dir_x = self.resolution[0] / 2 - self.x
-            dir_y = self.resolution[1] / 2 - self.y
-            abs_dir = np.sqrt(dir_x ** 2 + dir_y ** 2)
-            self.ref = [int(self.x + dir_x * 104 / abs_dir), int(self.y + dir_y * 104 / abs_dir)]
-            print(dir_x, dir_y, self.x, self.y, abs_dir, self.ref)
-            value = ['new_ref', {'ref': self.ref}]
-            self.send_server(value)
-            self.reset_values()
-            self.contador_listo = 0
-            self.inicio_prueba_13 = True
-            self.prueba_13_activada = True
-            self.prueba_13_listo = False
-        except:
-            self.prueba_13_listo = True
+        valido = False
+        margen = 200
+        while not valido:
+            angulo = uniform(0, 2 * np.pi)
+            self.ref = [int(self.x + 104 * np.cos(angulo)), int(self.y + 104 * np.sin(angulo))]
+            if (self.ref[0] < self.resolution[0] - margen and self.ref[0] > margen and
+                    self.ref[1] < self.resolution[1] - margen and self.ref[1] > margen):
+                valido = True
+        value = ['new_ref', {'ref': self.ref}]
+        self.send_server(value)
+        self.reset_values()
+        self.contador_listo = 0
+        self.inicio_prueba_13 = True
+        self.prueba_13_activada = True
+        self.prueba_13_listo = False
 
     def detener_prueba(self):
         self.prueba_13_listo = True

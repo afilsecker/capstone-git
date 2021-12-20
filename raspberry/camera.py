@@ -13,9 +13,11 @@ class Camera:
             self.__dict__.update(diccionario["camera"])
 
         self.stream = cv2.VideoCapture(self.src)
-        self.stream.set(3, self.resolution[0])
-        self.stream.set(4, self.resolution[1])
+        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
         self.stream.set(cv2.CAP_PROP_FPS, self.fps)
+        self.stream.set(cv2.CAP_PROP_BRIGHTNESS, self.brightness)
+        self.stream.set(cv2.CAP_PROP_SATURATION, self.saturation)
         self.stopped = False
         self.imagen_capturada = Event()
         self.capturar = Event()
@@ -84,7 +86,6 @@ class Camera:
         with self.frames_lock:
             _, frame = self.stream.read()
             punto_encontrado, puntos_encontrados = self.find_laser(frame)
-            print(punto_encontrado, puntos_encontrados)
             return frame, punto_encontrado, puntos_encontrados
 
 

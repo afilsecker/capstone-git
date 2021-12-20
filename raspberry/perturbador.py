@@ -69,5 +69,4 @@ class Perturbador:
             self.perturbador_pipe.send(envio)
 
     def send(self, msg: str):
-        print(msg)
         self.serial.write((msg + '\n').encode(self.encoding))

@@ -147,8 +147,7 @@ class Motores:
             'send_center': self.send_center
         }
 
-    def set_vels(self, vel_A: int, vel_B: int):
-        self.start_time = time()
+    def set_vels(self, vel_A: int, vel_B: int, start_time=time()):
         initial_bit = pow(2, 7)
         if vel_A >= 0:
             initial_bit += pow(2, 0)
@@ -160,7 +159,7 @@ class Motores:
         self.serial.write(vel_A_bit)
         vel_B_bit = int.to_bytes(abs(vel_B), 1, 'big')
         self.serial.write(vel_B_bit)
-        # print('send_time = {:<6.2f} ms'.format((time() - self.start_time) * 1000))
+        # print('send_time = {:<6.2f} ms'.format((time() - start_time) * 1000))
 
     def send_calibrate(self):
         self.in_calibrate = True

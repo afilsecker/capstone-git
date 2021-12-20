@@ -9,7 +9,9 @@
         "src": 0,
         "resolution": [640, 480],
         "fps": 120,
-        "umbral": 240
+        "umbral": 220,
+        "brightness": 60,
+        "saturation": 4
     },
 
     "controlador": {
